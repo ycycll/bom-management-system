@@ -13,7 +13,7 @@ defog = APIRouter(prefix="/defog", tags=["技术准备生成"])
 
 embeddings = DashScopeEmbeddings(
     model="text-embedding-v2",
-    dashscope_api_key="sk-18f6c9127c2048ad9eb5abab82e9e1bf"
+    dashscope_api_key="111"
 )
 
 feature_vectorstore = Chroma(
@@ -24,7 +24,7 @@ feature_vectorstore = Chroma(
 
 llm = ChatTongyi(
     model="qwen3.7-max",
-    dashscope_api_key="sk-18f6c9127c2048ad9eb5abab82e9e1bf"
+    dashscope_api_key="111"
 )
 
 prompts_template = """

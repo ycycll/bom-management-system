@@ -196,7 +196,7 @@ let handle_add = function () {
 }
 
 let add = function () {
-  axios.post('/we/add', data.value.form).then(function (resp) {
+  axios.post('/api/we/add', data.value.form).then(function (resp) {
     if (resp.status === 200) {
       data.value.dialogVisible = false
       load()
@@ -208,7 +208,7 @@ let add = function () {
 }
 
 let update = function () {
-  axios.put('/we/update', data.value.form).then(function (resp) {
+  axios.put('/api/we/update', data.value.form).then(function (resp) {
     if (resp.status === 200) {
       data.value.dialogVisible = false
       load()
@@ -225,7 +225,7 @@ let huddle_edit = function (row) {
 }
 
 let huddle_delete = function (id) {
-  axios.delete('/we/delete/' + id).then(
+  axios.delete('/api/we/delete/' + id).then(
       function (resp) {
         if (resp.status === 200) {
           load()
@@ -250,7 +250,7 @@ let save = function () {
 }
 
 let load = function () {
-  axios.get('/we/search_filter', {
+  axios.get('/api/we/search_filter', {
     params: {
       page_num: data.value.page_num,
       page_size: data.value.page_size,
