@@ -98,3 +98,9 @@ class AGREEMENT_UPDATE_MODEL(BaseModel):
     name: str | None = None
     tp: str | None = None
 
+
+class ARCHIVE_SAVE_MODEL(BaseModel):
+    flow_no: str  # 流程号
+    remark: str = ''  # 备注
+    archive_data: List[Dict]  # 完整的filterData数据
+

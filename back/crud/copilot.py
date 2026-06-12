@@ -1,5 +1,7 @@
 import logging
 import re
+import json
+from datetime import datetime
 from typing import List, Dict
 
 import pandas as pd
@@ -9,7 +11,7 @@ from sqlalchemy import text
 from crud.tool_function import CheckCleaner, Cleaner
 from db.config import Session
 from db.dict import model_data_ffb, model_fb_dict
-from model import TPResponse, TPItem
+from model import TPResponse, TPItem, ARCHIVE_SAVE_MODEL
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -728,3 +730,102 @@ async def save_to_db(items: List[TPItem]):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"数据库写入失败: {str(e)}")
+
+
+@copilot.post("/archive/save", tags=["存档"])
+async def save_archive(archive_data: ARCHIVE_SAVE_MODEL):
+    """保存进度 - 保存整个filterData"""
+    try:
+        with Session() as session:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            data_json = json.dumps(archive_data.archive_data, ensure_ascii=False)
+            
+            query = text("""
+                INSERT INTO archives (flow_no, remark, archive_data, created_at, updated_at, record_count)
+                VALUES (:flow_no, :remark, :data, :created, :updated, :count)
+            """)
+            session.execute(query, {
+                "flow_no": archive_data.flow_no,
+                "remark": archive_data.remark,
+                "data": data_json,
+                "created": now,
+                "updated": now,
+                "count": len(archive_data.archive_data)
+            })
+            session.commit()
+            
+            return {"code": 200, "message": "保存成功"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"保存失败: {str(e)}")
+
+
+@copilot.get("/archive/list", tags=["读档"])
+async def list_archives(page: int = 1, page_size: int = 10):
+    """列出所有存档（分页）"""
+    try:
+        with Session() as session:
+            # 查询总数
+            count_query = text("SELECT COUNT(*) FROM archives")
+            total = session.execute(count_query).scalar()
+            
+            # 分页查询
+            offset = (page - 1) * page_size
+            query = text("""
+                SELECT id, flow_no, remark, created_at, updated_at, record_count 
+                FROM archives 
+                ORDER BY updated_at DESC 
+                LIMIT :limit OFFSET :offset
+            """)
+            result = session.execute(query, {"limit": page_size, "offset": offset})
+            archives = []
+            for row in result:
+                archives.append({
+                    "id": row[0],
+                    "flow_no": row[1],
+                    "remark": row[2],
+                    "created_at": row[3],
+                    "updated_at": row[4],
+                    "record_count": row[5]
+                })
+            return {"code": 200, "message": "查询成功", "data": archives, "total": total}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
+
+
+@copilot.get("/archive/load/{archive_id}", tags=["读档"])
+async def load_archive(archive_id: int):
+    """加载指定存档"""
+    try:
+        with Session() as session:
+            query = text("SELECT archive_data FROM archives WHERE id = :id")
+            result = session.execute(query, {"id": archive_id})
+            row = result.fetchone()
+            
+            if not row:
+                raise HTTPException(status_code=404, detail="存档不存在")
+            
+            archive_data = json.loads(row[0])
+            return {"code": 200, "message": "加载成功", "data": archive_data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"加载失败: {str(e)}")
+
+
+@copilot.delete("/archive/delete/{archive_id}", tags=["存档"])
+async def delete_archive(archive_id: int):
+    """删除存档"""
+    try:
+        with Session() as session:
+            query = text("DELETE FROM archives WHERE id = :id")
+            result = session.execute(query, {"id": archive_id})
+            session.commit()
+            
+            if result.rowcount == 0:
+                raise HTTPException(status_code=404, detail="存档不存在")
+            
+            return {"code": 200, "message": "删除成功"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")

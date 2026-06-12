@@ -39,6 +39,12 @@
             <el-tooltip content="批量粘贴" placement="top">
               <el-button color="#8FD2E6" circle v-bind:icon="DocumentCopy" @click="openPasteDialog" style="margin-left: 40px" size="default"></el-button>
             </el-tooltip>
+            <el-tooltip content="保存进度" placement="top">
+              <el-button type="warning" circle v-bind:icon="Upload" @click="openSaveDialog" style="margin-left: 40px" size="default"></el-button>
+            </el-tooltip>
+            <el-tooltip content="读取存档" placement="top">
+              <el-button type="primary" circle v-bind:icon="Download" @click="loadArchives" style="margin-left: 40px" size="default"></el-button>
+            </el-tooltip>
           </div>
         </template>
       </el-upload>
@@ -291,14 +297,50 @@
           <el-button type="primary" @click="confirmPaste">确认粘贴</el-button>
         </template>
       </el-dialog>
+      <el-dialog v-model="saveDialogVisible" title="保存进度" width="600px">
+        <el-form label-width="60px">
+          <el-form-item label="流程号">
+            <el-input v-model="saveForm.flow_no" placeholder="请输入流程号" />
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input v-model="saveForm.remark" type="textarea" :rows="3" placeholder="可选备注" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="saveDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveArchive" :loading="saving">保存</el-button>
+        </template>
+      </el-dialog>
+      <el-dialog v-model="archiveListVisible" title="读取存档" width="900px">
+        <el-table :data="archiveList" border>
+          <el-table-column prop="flow_no" label="流程号" width="160" />
+          <el-table-column prop="remark" label="备注" />
+          <el-table-column prop="record_count" label="记录数" width="80" />
+          <el-table-column prop="updated_at" label="更新时间" width="160" />
+          <el-table-column label="操作" width="150">
+            <template #default="scope">
+              <el-button type="primary" size="small" @click="loadArchive(scope.row.id)">加载</el-button>
+              <el-button type="danger" size="small" @click="deleteArchive(scope.row.id)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+            v-model:current-page="archivePage"
+            :page-size="10"
+            :total="archiveTotal"
+            layout="total, prev, pager, next"
+            @current-change="loadArchives"
+            style="margin-top: 15px; justify-content: center"
+        />
+      </el-dialog>
     </div>
   </aside_navigation>
 
 </template>
 <script setup>
 import aside_navigation from '../component/navigation.vue'
-import {UploadFilled, Monitor, SetUp, OfficeBuilding, DocumentCopy} from "@element-plus/icons-vue";
-import {ElMessage} from "element-plus";
+import {UploadFilled, Monitor, SetUp, OfficeBuilding, DocumentCopy, Download, Upload} from "@element-plus/icons-vue";
+import {ElMessage, ElMessageBox} from "element-plus";
 import axios from 'axios';
 import {computed, ref} from "vue";
 import * as XLSX from "xlsx";
@@ -329,6 +371,88 @@ let pasteText = ref('')
 let openPasteDialog = function () {
   pasteText.value = ''
   pasteDialogVisible.value = true
+}
+
+// 存档相关
+let saveDialogVisible = ref(false)
+let saveForm = ref({ flow_no: '', remark: '' })
+let saving = ref(false)
+
+let openSaveDialog = function () {
+  if (filterData.value.length === 0) {
+    ElMessage.warning('无数据可保存')
+    return
+  }
+  saveForm.value = { flow_no: '', remark: '' }
+  saveDialogVisible.value = true
+}
+
+let saveArchive = async function () {
+  if (!saveForm.value.flow_no.trim()) {
+    ElMessage.warning('请输入流程号')
+    return
+  }
+  saving.value = true
+  try {
+    await axios.post('/api/copilot/archive/save', {
+      flow_no: saveForm.value.flow_no,
+      remark: saveForm.value.remark,
+      archive_data: filterData.value
+    })
+    ElMessage.success('保存成功')
+    saveDialogVisible.value = false
+  } catch (error) {
+    ElMessage.error('保存失败：' + error.message)
+  } finally {
+    saving.value = false
+  }
+}
+
+let archiveListVisible = ref(false)
+let archiveList = ref([])
+let archiveTotal = ref(0)
+let archivePage = ref(1)
+
+let loadArchives = async function () {
+  try {
+    const response = await axios.get('/api/copilot/archive/list', {
+      params: { page: archivePage.value, page_size: 10 }
+    })
+    if (response.data.code === 200) {
+      archiveList.value = response.data.data
+      archiveTotal.value = response.data.total
+      archiveListVisible.value = true
+    }
+  } catch (error) {
+    ElMessage.error('查询失败：' + error.message)
+  }
+}
+
+let loadArchive = async function (archiveId) {
+  try {
+    const response = await axios.get(`/api/copilot/archive/load/${archiveId}`)
+    if (response.data.code === 200) {
+      data.value = response.data.data
+      localStorage.setItem('copilotData', JSON.stringify(data.value))
+      ElMessage.success('加载成功')
+      archiveListVisible.value = false
+    }
+  } catch (error) {
+    ElMessage.error('加载失败：' + error.message)
+  }
+}
+
+let deleteArchive = async function (archiveId) {
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示', { type: 'warning' })
+    await axios.delete(`/api/copilot/archive/delete/${archiveId}`)
+    ElMessage.success('删除成功')
+    loadArchives()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败：' + error.message)
+    }
+  }
 }
 
 let confirmPaste = function () {
