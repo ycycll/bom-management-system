@@ -109,7 +109,7 @@ let huddle_edit = function (row) {
 
 
 let huddle_delete = function (id) {
-  axios.delete('/api/agreement/delete/' + id).then(
+  axios.delete('/agreement/delete/' + id).then(
       function (resp) {
         if (resp.status === 200) {
           load()
@@ -127,7 +127,7 @@ let handle_add = function () {
 }
 
 let add = function () {
-  axios.post('/api/agreement/add', data.value.form).then(function (resp) {
+  axios.post('/agreement/add', data.value.form).then(function (resp) {
     if (resp.status === 200) {
       data.value.dialogVisible = false
       load()
@@ -139,7 +139,7 @@ let add = function () {
 }
 
 let update = function () {
-  axios.put('/api/agreement/update', data.value.form).then(function (resp) {
+  axios.put('/agreement/update', data.value.form).then(function (resp) {
     if (resp.status === 200) {
       data.value.dialogVisible = false
       load()
@@ -163,7 +163,7 @@ let save = function () {
 }
 
 let load = function () {
-  axios.get('/api/agreement/list', {
+  axios.get('/agreement/list', {
     params: {
       page_num: data.value.page_num,
       page_size: data.value.page_size,

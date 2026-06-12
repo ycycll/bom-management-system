@@ -72,7 +72,7 @@ const isAdmin = computed(() => {
 
 
 let huddle_delete = function (recommendTP) {
-  axios.delete('/api/hub/delete/' + recommendTP).then(
+  axios.delete('/hub/delete/' + recommendTP).then(
       function (resp) {
         if (resp.status === 200) {
           load()
@@ -87,7 +87,7 @@ let huddle_delete = function (recommendTP) {
 
 
 let load = function () {
-  axios.get('/api/hub/list', {
+  axios.get('/hub/list', {
     params: {
       page_num: data.value.page_num,
       page_size: data.value.page_size,

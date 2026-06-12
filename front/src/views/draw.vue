@@ -95,12 +95,12 @@ const currentDrawId = ref(null)
 // iframe src：通过后端接口流式返回文件
 const iframeSrc = computed(() => {
   if (!currentDrawId.value) return ''
-  return `/api/draw/file/${currentDrawId.value}`
+  return `/draw/file/${currentDrawId.value}`
 })
 
 // 加载列表
 const loadList = () => {
-  axios.get('/api/draw/list', {
+  axios.get('/draw/list', {
     params: {
       draw_name: searchForm.value.draw_name,
       remark: searchForm.value.remark,
