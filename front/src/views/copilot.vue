@@ -312,6 +312,10 @@
         </template>
       </el-dialog>
       <el-dialog v-model="archiveListVisible" title="读取存档" width="900px">
+        <div style="display: flex; gap: 10px; margin-bottom: 15px">
+          <el-input v-model="archiveSearch" placeholder="搜索流程号或备注" clearable @keyup.enter="loadArchives" style="flex: 1" />
+          <el-button @click="loadArchives" type="primary">搜索</el-button>
+        </div>
         <el-table :data="archiveList" border>
           <el-table-column prop="flow_no" label="流程号" width="160" />
           <el-table-column prop="remark" label="备注" />
@@ -412,11 +416,13 @@ let archiveListVisible = ref(false)
 let archiveList = ref([])
 let archiveTotal = ref(0)
 let archivePage = ref(1)
+let archiveSearch = ref('')
 
 let loadArchives = async function () {
+  archivePage.value = 1
   try {
     const response = await axios.get('/api/copilot/archive/list', {
-      params: { page: archivePage.value, page_size: 10 }
+      params: { page: archivePage.value, page_size: 10, keyword: archiveSearch.value }
     })
     if (response.data.code === 200) {
       archiveList.value = response.data.data

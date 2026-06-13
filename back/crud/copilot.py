@@ -760,23 +760,33 @@ async def save_archive(archive_data: ARCHIVE_SAVE_MODEL):
 
 
 @copilot.get("/archive/list", tags=["读档"])
-async def list_archives(page: int = 1, page_size: int = 10):
-    """列出所有存档（分页）"""
+async def list_archives(page: int = 1, page_size: int = 10, keyword: str = ''):
+    """列出所有存档（分页+搜索）"""
     try:
         with Session() as session:
+            # 构建搜索条件
+            where_clause = ""
+            params = {}
+            if keyword:
+                where_clause = "WHERE flow_no LIKE :keyword OR remark LIKE :keyword"
+                params['keyword'] = f'%{keyword}%'
+            
             # 查询总数
-            count_query = text("SELECT COUNT(*) FROM archives")
-            total = session.execute(count_query).scalar()
+            count_query = text(f"SELECT COUNT(*) FROM archives {where_clause}")
+            total = session.execute(count_query, params).scalar()
             
             # 分页查询
             offset = (page - 1) * page_size
-            query = text("""
+            query = text(f"""
                 SELECT id, flow_no, remark, created_at, updated_at, record_count 
                 FROM archives 
+                {where_clause}
                 ORDER BY updated_at DESC 
                 LIMIT :limit OFFSET :offset
             """)
-            result = session.execute(query, {"limit": page_size, "offset": offset})
+            params['limit'] = page_size
+            params['offset'] = offset
+            result = session.execute(query, params)
             archives = []
             for row in result:
                 archives.append({
