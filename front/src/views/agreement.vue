@@ -5,7 +5,7 @@
       <div style="width: 80%; margin: 30px auto;">
         <div style="margin-bottom: 20px">
           <el-input placeholder="请输入协议号或协议名查询" v-model="data.keyword" clearable
-                    style="width: 20% ; margin-right: 20px"></el-input>
+                    style="width: 20% ; margin-right: 20px" @keyup.enter="load"></el-input>
           <el-button type="primary" v-on:click="load" style="margin-right: 10px">查询</el-button>
           <el-button v-if="isAdmin" type="primary" v-on:click="handle_add">增加</el-button>
         </div>
