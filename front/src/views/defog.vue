@@ -160,11 +160,11 @@ let sendQuery = async () => {
       formData.append('query', query);
       formData.append('file', selectedFile.value);
 
-      response = await axios.post('/defog/question', formData, {
+      response = await axios.post('/api/defog/question', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
     } else {
-      response = await axios.post('/defog/question', { query });
+      response = await axios.post('/api/defog/question', { query });
     }
 
     if (response.data.code === 200) {

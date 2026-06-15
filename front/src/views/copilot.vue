@@ -518,7 +518,7 @@ let check = async function () {
   checking.value = true;
 
   try {
-    let response = await axios.post('/copilot/check', filterData.value, {
+    let response = await axios.post('/api/copilot/check', filterData.value, {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -549,7 +549,7 @@ let maintain = async function () {
   maintaining.value = true;
 
   try {
-    let response = await axios.post('/copilot/maintain', filterData.value, {
+    let response = await axios.post('/api/copilot/maintain', filterData.value, {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -739,7 +739,7 @@ let uploadRecommend = async function () {
 
   savingToDB.value = true;
   try {
-    let response = await axios.post('/copilot/recommend-to-db', filterData.value);
+    let response = await axios.post('/api/copilot/recommend-to-db', filterData.value);
     if (response.data.code === 200) {
       ElMessage.success('数据入库成功');
     } else {
@@ -768,7 +768,7 @@ let handleUpload = async function () {
       formData.append('file', file.raw);
     }
 
-    let response = await axios.post('/copilot/upload', formData);
+    let response = await axios.post('/api/copilot/upload', formData);
 
     if (response.data.code === 200) {
       data.value = response.data.data;
@@ -790,7 +790,7 @@ let handleUpload = async function () {
 // 查看BOM推荐
 let showBOMRecommend = function (row) {
   currentSelectedRow.value = row;
-  axios.get('/copilot/recommend', {
+  axios.get('/api/copilot/recommend', {
     params: {
       techPreparation: row.techPreparation,
       productType: row.productType,
