@@ -16,3 +16,48 @@ bin-release/
 # Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
 # should NOT be excluded as they contain compiler settings and other important
 # information for Eclipse / Flash Builder.
+
+# Python 编译文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyi
+*.so
+*.dll
+*.exe
+*.py[co]
+
+# 虚拟环境
+venv/
+env/
+ENV/
+.venv/
+
+# IDE 和编辑器文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# 本地配置文件
+.env
+.local
+.DS_Store
+
+# FastAPI 项目常见
+*.log
+*.sqlite
+*.db
+
+# 其他常见忽略项
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+*.whl
