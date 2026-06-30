@@ -1,9 +1,10 @@
+import json
 import logging
 import re
-import json
 from datetime import datetime
 from typing import List, Dict
 
+import numpy as np
 import pandas as pd
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from sqlalchemy import text
@@ -240,8 +241,28 @@ async def recommend(
             logger.info("未找到匹配的技术准备")
             return {"code": 404, "message": "未找到匹配的技术准备", "data": None}
 
+        # ===== 新增：定义重要特征及其惩罚系数 =====
+        activation_function_features = {
+            "底脚长圆孔": 0.9,
+            "IC416": 0.8,
+            "倒装": 0.7,
+            "超低温": 0.7,
+            "铝壳": 0.7,
+            "-2": 0.8,
+            "-4": 0.8,
+            "-6": 0.8,
+            "-8": 0.8,
+        }
+
         # 匹配
         order_tags = set(order.split(','))
+
+        # 预先识别订单中命中了哪些“重要特征”
+        triggered_features = {}
+        for feature, penalty in activation_function_features.items():
+            if feature in order:
+                triggered_features[feature] = penalty
+
         scores = []
 
         for hub_idx, row in df_hub.iterrows():
@@ -250,6 +271,11 @@ async def recommend(
                 continue
             hub_tags = set(row['recommendTP'].split(','))
             score = len(order_tags & hub_tags) / len(order_tags | hub_tags)
+
+            for feature, penalty in triggered_features.items():
+                if feature not in row['recommendTP']:
+                    score *= penalty
+
             if score > 0:  # 过滤掉完全不相关的
                 scores.append((score, hub_idx))
 
@@ -257,17 +283,18 @@ async def recommend(
         scores.sort(key=lambda x: x[0], reverse=True)
         top_results = scores[:6]
 
+
         # 查询 COLOR 表
         match_paint = re.search(r'面漆:([A-Z]+\d+)', order)
         order_paint = match_paint.group(1) if match_paint else ('RAL5012' if 'YB' in productType else 'GE新油漆')
-        query = "SELECT num FROM color WHERE color= :order_paint"
-        color_row = session.execute(text(query), {"order_paint": order_paint}).fetchone()
+        query_color = "SELECT num FROM color WHERE color= :order_paint"
+        color_row = session.execute(text(query_color), {"order_paint": order_paint}).fetchone()
         color = color_row[0] if color_row else ''
 
         # 部件推荐（规则引擎）
         components = []
-        query = text("SELECT * FROM component_hub WHERE const = :const")
-        df_components = pd.read_sql(query, session.bind, params={"const": order_const})
+        query_component = text("SELECT * FROM component_hub WHERE const = :const")
+        df_components = pd.read_sql(query_component, session.bind, params={"const": order_const})
 
     # 构建结果
     results = []
@@ -280,7 +307,6 @@ async def recommend(
             'recommendDesc': df_hub.loc[idx, 'recommendDesc'],
             'color': color,
         })
-
     if not df_components.empty:
         for _, row in df_components.iterrows():
             if row['technical_preparation'] in order_tags:
@@ -288,8 +314,8 @@ async def recommend(
                     'component_id': row['component_id'],  # 料号
                     'component_desc': row['component_desc'],  # 描述
                 })
-
     return {"code": 200, "message": "推荐成功", "data": results, "components": components}
+
 
 
 @copilot.post("/check", tags=["校核"])
@@ -318,7 +344,8 @@ async def check(filterDF: List[Dict]):
         df_check['junctionBoxPosition_del'] = df_check['junctionBoxPosition_del'].str.replace('顶右', '')
         map_jydj = {
             '155(F)': 'F级',
-            '180(H)': 'H级'
+            '180(H)': 'H级',
+            '': 'F级'
         }
         df_check['insulationClass_del'] = df_check['insulationClass'].fillna('155(F)')
         df_check['insulationClass_del'] = df_check['insulationClass_del'].map(map_jydj)
@@ -402,9 +429,9 @@ async def check(filterDF: List[Dict]):
                               'WF2': '防腐',
                               'WTHF2': '防腐',
                               'G': '',
-                              'GW': '',
+                              'GW': '户外非防腐',
                               'TH': '',
-                              'W': '',
+                              'W': '户外非防腐',
                               '户内': ''
                               }
             df2_check['environmentalConditions_del'] = df2_check['environmentalConditions'].fillna('户内').map(
@@ -546,6 +573,9 @@ async def maintain(filterDF: List[Dict]):
 
             df1['铭牌料号'] = df1['size'].map(model_data_ffb['铭牌料号'])
             df1['打印模板'] = df1['size'].map(model_data_ffb['打印模板'])
+            df1['绝缘等级'] = df1['绝缘等级'].replace('', np.nan)
+            df1['绝缘等级'] = df1['绝缘等级'].fillna('F')
+            df1['绝缘等级'] = df1['绝缘等级'].str.replace('155(F)', 'F')
         if not df2.empty:
             df2['防爆等级'] = df2['防爆等级'].fillna('')
             df2['param_cat'] = df2['额定功率'].astype(str) + '&' + df2['额定电压'].astype(str)
@@ -584,6 +614,8 @@ async def maintain(filterDF: List[Dict]):
 
             df2['铭牌料号'] = df2['size'].map(model_fb_dict['铭牌料号'])
             df2['打印模板'] = df2['size'].map(model_fb_dict['打印模板'])
+            df2['绝缘等级'] = df2['绝缘等级'].replace('', np.nan)
+            df2['绝缘等级'] = df2['绝缘等级'].fillna('155(F)')
 
         df = pd.concat([df1, df2], join='outer', axis=0, ignore_index=True)
 
@@ -594,7 +626,8 @@ async def maintain(filterDF: List[Dict]):
         df['非驱动轴承'] = df['非驱动轴承'].str.strip()
 
         df['标准编码'] = df['标准编码'].str.replace('  ', ' ')
-        df['绝缘等级'] = df['绝缘等级'].fillna('155(F)')
+        df['防护等级'] = df['防护等级'].replace('', np.nan)
+        df['冷却方式'] = df['冷却方式'].replace('', np.nan)
         df['冷却方式'] = df['冷却方式'].fillna('411')
         df['防护等级'] = df['防护等级'].fillna('55')
 
@@ -661,7 +694,6 @@ async def maintain(filterDF: List[Dict]):
 async def save_to_db(items: List[TPItem]):
     """将处理后的数据保存到数据库"""
     try:
-
         df = pd.DataFrame([item.dict() for item in items])
         df['const'] = df['productType'].str.extract(r'^([^-]*-\d+)')
         df = df[['productType', 'techPreparation', 'materialNo', 'materialDesc', 'environmentalConditions']]
@@ -738,7 +770,7 @@ async def save_archive(archive_data: ARCHIVE_SAVE_MODEL):
         with Session() as session:
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             data_json = json.dumps(archive_data.archive_data, ensure_ascii=False)
-            
+
             query = text("""
                 INSERT INTO archives (flow_no, remark, archive_data, created_at, updated_at, record_count)
                 VALUES (:flow_no, :remark, :data, :created, :updated, :count)
@@ -752,7 +784,7 @@ async def save_archive(archive_data: ARCHIVE_SAVE_MODEL):
                 "count": len(archive_data.archive_data)
             })
             session.commit()
-            
+
             return {"code": 200, "message": "保存成功"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"保存失败: {str(e)}")
@@ -769,11 +801,11 @@ async def list_archives(page: int = 1, page_size: int = 10, keyword: str = ''):
             if keyword:
                 where_clause = "WHERE flow_no LIKE :keyword OR remark LIKE :keyword"
                 params['keyword'] = f'%{keyword}%'
-            
+
             # 查询总数
             count_query = text(f"SELECT COUNT(*) FROM archives {where_clause}")
             total = session.execute(count_query, params).scalar()
-            
+
             # 分页查询
             offset = (page - 1) * page_size
             query = text(f"""
@@ -809,10 +841,10 @@ async def load_archive(archive_id: int):
             query = text("SELECT archive_data FROM archives WHERE id = :id")
             result = session.execute(query, {"id": archive_id})
             row = result.fetchone()
-            
+
             if not row:
                 raise HTTPException(status_code=404, detail="存档不存在")
-            
+
             archive_data = json.loads(row[0])
             return {"code": 200, "message": "加载成功", "data": archive_data}
     except HTTPException:
@@ -829,10 +861,10 @@ async def delete_archive(archive_id: int):
             query = text("DELETE FROM archives WHERE id = :id")
             result = session.execute(query, {"id": archive_id})
             session.commit()
-            
+
             if result.rowcount == 0:
                 raise HTTPException(status_code=404, detail="存档不存在")
-            
+
             return {"code": 200, "message": "删除成功"}
     except HTTPException:
         raise

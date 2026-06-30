@@ -419,7 +419,7 @@ let archivePage = ref(1)
 let archiveSearch = ref('')
 
 let loadArchives = async function () {
-  archivePage.value = 1
+//  archivePage.value = 1 
   try {
     const response = await axios.get('/api/copilot/archive/list', {
       params: { page: archivePage.value, page_size: 10, keyword: archiveSearch.value }
