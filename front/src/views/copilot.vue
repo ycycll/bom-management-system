@@ -69,7 +69,7 @@
           </el-table-column>
           <el-table-column prop="materialDesc" label="物料长文本描述" min-width="600">
             <template #default="scope">
-              <el-input v-model="scope.row.materialDesc" @blur="saveData" type="textarea"/>
+              <el-input v-model="scope.row.materialDesc" @blur="saveData" type="textarea" :autosize="{ minRows: 1, maxRows: 20 }"/>
             </template>
           </el-table-column>
           <el-table-column prop="productType" label="产品型号" width="140" >
@@ -79,12 +79,13 @@
           </el-table-column>
           <el-table-column prop="techPreparation" label="技术准备" min-width="400">
             <template #default="scope">
-              <el-input v-model="scope.row.techPreparation" @blur="saveData" type="textarea"/>
+              <el-input v-model="scope.row.techPreparation" @blur="saveData" type="textarea" :autosize="{ minRows: 1, maxRows: 10 }"/>
+
             </template>
           </el-table-column>
           <el-table-column prop="lineItemNotes" label="行项目备注" min-width="660" v-if="showLineItemNotesColumn" >
             <template #default="scope">
-              <el-input v-model="scope.row.lineItemNotes" @blur="saveData" type="textarea"/>
+              <el-input v-model="scope.row.lineItemNotes" @blur="saveData" type="textarea" :autosize="{ minRows: 1, maxRows: 10 }"/>
             </template>
           </el-table-column>
           <el-table-column prop="power" label="功率" min-width="80">
