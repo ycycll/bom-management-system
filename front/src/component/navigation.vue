@@ -45,6 +45,10 @@
             <el-icon><FolderOpened /></el-icon>
             <span>图纸后台</span>
           </el-menu-item>
+          <el-menu-item index="/component">
+            <el-icon><Box /></el-icon>
+            <span>部件推荐</span>
+          </el-menu-item>
         </el-sub-menu>
       </el-menu>
       <div class="logout-btn">

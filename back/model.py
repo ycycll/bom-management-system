@@ -104,3 +104,16 @@ class ARCHIVE_SAVE_MODEL(BaseModel):
     remark: str = ''  # 备注
     archive_data: List[Dict]  # 完整的filterData数据
 
+class ComponentModel(BaseModel):
+    """部件推荐数据模型"""
+    const: str
+    technical_preparation: str
+    component_id: str
+    component_desc: str
+
+
+class UpdateComponentModel(ComponentModel):
+    """更新部件推荐数据模型"""
+    old_const: str = ''
+    old_technical_preparation: str = ''
+    old_component_id: str = ''
