@@ -61,7 +61,17 @@
       <!-- 处理结果表格 -->
       <div style="height: 70vh; overflow-y: auto;">
         <el-table :data="filterData" style="width: 100%" border>
-          <el-table-column prop="workNo" label="工作令号" min-width="110" />
+          <el-table-column prop="workNo" label="工作令号" min-width="130" />
+          <el-table-column prop="materialNo" label="物料号码" width="150">
+            <template #default="scope">
+              <el-input v-model="scope.row.materialNo" @blur="saveData" />
+            </template>
+          </el-table-column>
+          <el-table-column prop="materialDesc" label="物料长文本描述" min-width="600">
+            <template #default="scope">
+              <el-input v-model="scope.row.materialDesc" @blur="saveData" type="textarea"/>
+            </template>
+          </el-table-column>
           <el-table-column prop="productType" label="产品型号" width="140" >
             <template #default="scope">
               <el-input v-model="scope.row.productType" @blur="saveData" type="text"/>
@@ -75,16 +85,6 @@
           <el-table-column prop="lineItemNotes" label="行项目备注" min-width="660" v-if="showLineItemNotesColumn" >
             <template #default="scope">
               <el-input v-model="scope.row.lineItemNotes" @blur="saveData" type="textarea"/>
-            </template>
-          </el-table-column>
-          <el-table-column prop="materialNo" label="物料号码" width="150">
-            <template #default="scope">
-              <el-input v-model="scope.row.materialNo" @blur="saveData" />
-            </template>
-          </el-table-column>
-          <el-table-column prop="materialDesc" label="物料长文本描述" min-width="600">
-            <template #default="scope">
-              <el-input v-model="scope.row.materialDesc" @blur="saveData" type="textarea"/>
             </template>
           </el-table-column>
           <el-table-column prop="power" label="功率" min-width="80">
