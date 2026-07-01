@@ -53,28 +53,28 @@
         <el-text size="large">已选择文件: {{ fileName }}</el-text>
       </div>
 
-      <div style="margin-bottom: 10px; display: flex;">
+      <div style="margin-bottom: 20px; display: flex;">
         <el-input v-model="filterTextComputed" placeholder="请输入机座号筛选" style="width: 200px; margin-right: 40px;"/>
         <el-input v-model="polesFilterTextComputed" placeholder="请输入极数筛选" style="width: 200px"/>
       </div>
 
       <!-- 处理结果表格 -->
-      <div style="height: 600px ; overflow-y: auto;">
+      <div style="height: 70vh; overflow-y: auto;">
         <el-table :data="filterData" style="width: 100%" border>
-          <el-table-column prop="workNo" label="工作令号" min-width="140" />
-          <el-table-column prop="techPreparation" label="技术准备" min-width="600">
+          <el-table-column prop="workNo" label="工作令号" min-width="110" />
+          <el-table-column prop="productType" label="产品型号" width="140" >
+            <template #default="scope">
+              <el-input v-model="scope.row.productType" @blur="saveData" type="text"/>
+            </template>
+          </el-table-column>
+          <el-table-column prop="techPreparation" label="技术准备" min-width="400">
             <template #default="scope">
               <el-input v-model="scope.row.techPreparation" @blur="saveData" type="textarea"/>
             </template>
           </el-table-column>
-          <el-table-column prop="lineItemNotes" label="行项目备注" min-width="600" v-if="showLineItemNotesColumn" >
+          <el-table-column prop="lineItemNotes" label="行项目备注" min-width="660" v-if="showLineItemNotesColumn" >
             <template #default="scope">
               <el-input v-model="scope.row.lineItemNotes" @blur="saveData" type="textarea"/>
-            </template>
-          </el-table-column>
-          <el-table-column prop="productType" label="产品型号" width="140" >
-            <template #default="scope">
-              <el-input v-model="scope.row.productType" @blur="saveData" type="text"/>
             </template>
           </el-table-column>
           <el-table-column prop="materialNo" label="物料号码" width="150">
@@ -82,12 +82,66 @@
               <el-input v-model="scope.row.materialNo" @blur="saveData" />
             </template>
           </el-table-column>
-          <el-table-column prop="materialDesc" label="物料长文本描述" min-width="220">
+          <el-table-column prop="materialDesc" label="物料长文本描述" min-width="600">
             <template #default="scope">
               <el-input v-model="scope.row.materialDesc" @blur="saveData" type="textarea"/>
             </template>
           </el-table-column>
-          <el-table-column prop="power" label="功率" min-width="60" />
+          <el-table-column prop="power" label="功率" min-width="80">
+            <template #default="scope">
+              <el-input v-model="scope.row.power" @blur="saveData" type="text"/>
+            </template>
+          </el-table-column>
+          <el-table-column prop="freq" label="频率" min-width="80">
+            <template #default="scope">
+              <el-input v-model="scope.row.freq" @blur="saveData" type="text"/>
+            </template>
+          </el-table-column>
+          <el-table-column prop="mountingType" label="安装方式" min-width="100">
+            <template #default="scope">
+              <el-input v-model="scope.row.mountingType" @blur="saveData" type="text"/>
+            </template>
+          </el-table-column>
+          <el-table-column prop="insulationClass" label="绝缘等级" min-width="100">
+            <template #default="scope">
+              <el-input v-model="scope.row.insulationClass" @blur="saveData" type="text"/>
+            </template>
+          </el-table-column>
+          <el-table-column prop="protectionClass" label="防护等级" min-width="100">
+            <template #default="scope">
+              <el-input v-model="scope.row.protectionClass" @blur="saveData" type="text"/>
+            </template>
+          </el-table-column>
+          <el-table-column prop="leadWireMethod" label="出线方式" min-width="100">
+            <template #default="scope">
+              <el-input v-model="scope.row.leadWireMethod" @blur="saveData" type="text"/>
+            </template>
+          </el-table-column>
+          <el-table-column prop="environmentalConditions" label="环境条件" min-width="100">
+            <template #default="scope">
+              <el-input v-model="scope.row.environmentalConditions" @blur="saveData" type="text"/>
+            </template>
+          </el-table-column>
+          <el-table-column prop="coolingMethod" label="冷却方式" min-width="100">
+            <template #default="scope">
+              <el-input v-model="scope.row.coolingMethod" @blur="saveData" type="text"/>
+            </template>
+          </el-table-column>
+          <el-table-column prop="junctionBoxPosition" label="主接线盒位置及方向" min-width="180">
+            <template #default="scope">
+              <el-input v-model="scope.row.junctionBoxPosition" @blur="saveData" type="text"/>
+            </template>
+          </el-table-column>
+          <el-table-column prop="bearingBrand" label="轴承品牌" min-width="100">
+            <template #default="scope">
+              <el-input v-model="scope.row.bearingBrand" @blur="saveData" type="text"/>
+            </template>
+          </el-table-column>
+          <el-table-column prop="rotationDirection" label="旋转方向" min-width="100">
+            <template #default="scope">
+              <el-input v-model="scope.row.rotationDirection" @blur="saveData" type="text"/>
+            </template>
+          </el-table-column>
           <el-table-column label="推荐" width="80" fixed="right">
             <template #default="scope">
               <el-button type="primary" size="small" @click="showBOMRecommend(scope.row)">
@@ -827,7 +881,7 @@ let fillRecommend = function (recommendItem) {
 
 <style scoped>.zero-container {
   padding: 20px;
-  max-width: 1420px;
+  max-width: 95%;
   margin: 0 auto;
 }
 
