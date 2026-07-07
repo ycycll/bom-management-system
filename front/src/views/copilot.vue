@@ -56,6 +56,8 @@
       <div style="margin-bottom: 20px; display: flex;">
         <el-input v-model="filterTextComputed" placeholder="请输入机座号筛选" style="width: 200px; margin-right: 40px;"/>
         <el-input v-model="polesFilterTextComputed" placeholder="请输入极数筛选" style="width: 200px"/>
+        <el-checkbox v-model="invertFilter" style="margin-left: 120px;margin-right: 6px;" label="反选" />
+        <el-input v-model="workNoFilterText" placeholder="工作令号筛选" style="width: 250px;" />
       </div>
 
       <!-- 处理结果表格 -->
@@ -424,6 +426,8 @@ let data = ref(JSON.parse(localStorage.getItem('copilotData') || '[]'))
 
 let filterText = ref(localStorage.getItem('copilotFilterText') || '');
 let polesFilterText = ref(localStorage.getItem('copilotPolesFilterText') || '')
+let invertFilter = ref(false);
+let workNoFilterText = ref('');
 
 let pasteDialogVisible = ref(false)
 let pasteText = ref('')
@@ -673,6 +677,23 @@ let filterData = computed(() => {
       }
       return false;
     });
+  }
+
+  // 工作令号筛选（精确匹配，支持空格分隔多个）
+  if (workNoFilterText.value) {
+    const workNos = workNoFilterText.value.split(' ').filter(n => n.trim());
+    if (workNos.length > 0) {
+      handledFilter = handledFilter.filter(row => {
+        if (!row.workNo) return false;
+        return workNos.some(no => row.workNo.trim() === no.trim());
+      });
+    }
+  }
+
+  // 反选（取反筛选结果）
+  if (invertFilter.value) {
+    const filteredSet = new Set(handledFilter.map(row => JSON.stringify(row)));
+    handledFilter = data.value.filter(row => !filteredSet.has(JSON.stringify(row)));
   }
 
   return handledFilter;
