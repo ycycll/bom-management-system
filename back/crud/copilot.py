@@ -870,3 +870,123 @@ async def delete_archive(archive_id: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
+
+@copilot.post("/archive_history/save", tags=["归档"])
+async def save_archive_history(archive_data: ARCHIVE_SAVE_MODEL):
+    """归档 - 保存进度"""
+    try:
+        with Session() as session:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            data_json = json.dumps(archive_data.archive_data, ensure_ascii=False)
+
+            query = text("""
+                INSERT INTO archive_history (flow_no, remark, archive_data, created_at, updated_at, record_count)
+                VALUES (:flow_no, :remark, :data, :created, :updated, :count)
+            """)
+            session.execute(query, {
+                "flow_no": archive_data.flow_no,
+                "remark": archive_data.remark,
+                "data": data_json,
+                "created": now,
+                "updated": now,
+                "count": len(archive_data.archive_data)
+            })
+            session.commit()
+            return {"code": 200, "message": "归档成功"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"归档失败: {str(e)}")
+
+@copilot.get("/archive_history/list", tags=["归档"])
+async def list_archive_history(page: int = 1, page_size: int = 10, keyword: str = ''):
+    """列出所有归档（分页+搜索）"""
+    try:
+        with Session() as session:
+            where_clause = ""
+            params = {}
+            if keyword:
+                where_clause = "WHERE flow_no LIKE :keyword OR remark LIKE :keyword"
+                params['keyword'] = f'%{keyword}%'
+
+            count_query = text(f"SELECT COUNT(*) FROM archive_history {where_clause}")
+            total = session.execute(count_query, params).scalar()
+
+            offset = (page - 1) * page_size
+            query = text(f"""
+                SELECT id, flow_no, remark, created_at, updated_at, record_count
+                FROM archive_history
+                {where_clause}
+                ORDER BY updated_at DESC
+                LIMIT :limit OFFSET :offset
+            """)
+            params['limit'] = page_size
+            params['offset'] = offset
+            result = session.execute(query, params)
+            archives = []
+            for row in result:
+                archives.append({
+                    "id": row[0], "flow_no": row[1], "remark": row[2],
+                    "created_at": row[3], "updated_at": row[4], "record_count": row[5]
+                })
+            return {"code": 200, "message": "查询成功", "data": archives, "total": total}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
+
+@copilot.get("/archive_history/load/{archive_id}", tags=["归档"])
+async def load_archive_history(archive_id: int):
+    """加载指定归档"""
+    try:
+        with Session() as session:
+            query = text("SELECT archive_data FROM archive_history WHERE id = :id")
+            result = session.execute(query, {"id": archive_id})
+            row = result.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="归档不存在")
+            archive_data = json.loads(row[0])
+            return {"code": 200, "message": "加载成功", "data": archive_data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"加载失败: {str(e)}")
+
+@copilot.delete("/archive_history/delete/{archive_id}", tags=["归档"])
+async def delete_archive_history(archive_id: int):
+    """删除归档"""
+    try:
+        with Session() as session:
+            query = text("DELETE FROM archive_history WHERE id = :id")
+            result = session.execute(query, {"id": archive_id})
+            session.commit()
+            if result.rowcount == 0:
+                raise HTTPException(status_code=404, detail="归档不存在")
+            return {"code": 200, "message": "删除成功"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
+
+@copilot.post("/archive/to_history/{archive_id}", tags=["归档"])
+async def archive_to_history(archive_id: int):
+    """把指定存档直接归档（存档列表里的快捷归档按钮调用）"""
+    try:
+        with Session() as session:
+            # 1. 从存档表读取该条数据
+            query = text("SELECT flow_no, remark, archive_data, record_count FROM archives WHERE id = :id")
+            row = session.execute(query, {"id": archive_id}).fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="存档不存在")
+
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            insert = text("""
+                INSERT INTO archive_history (flow_no, remark, archive_data, created_at, updated_at, record_count)
+                VALUES (:flow_no, :remark, :data, :created, :updated, :count)
+            """)
+            session.execute(insert, {
+                "flow_no": row[0], "remark": row[1], "data": row[2],
+                "created": now, "updated": now, "count": row[3]
+            })
+            session.commit()
+            return {"code": 200, "message": "归档成功"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"归档失败: {str(e)}")

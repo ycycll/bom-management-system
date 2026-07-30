@@ -45,6 +45,9 @@
             <el-tooltip content="读取存档" placement="top">
               <el-button type="primary" circle v-bind:icon="Download" @click="loadArchives" style="margin-left: 40px" size="default"></el-button>
             </el-tooltip>
+            <el-tooltip content="读取归档" placement="top">
+              <el-button type="success" circle v-bind:icon="FolderOpened" @click="loadArchiveHistory" style="margin-left: 40px" size="default"></el-button>
+            </el-tooltip>
           </div>
         </template>
       </el-upload>
@@ -353,7 +356,13 @@
         </template>
       </el-dialog>
       <el-dialog v-model="saveDialogVisible" title="保存进度" width="600px">
-        <el-form label-width="60px">
+        <el-form label-width="80px">
+          <el-form-item label="保存类型">
+            <el-radio-group v-model="saveForm.save_type">
+              <el-radio-button label="archive">存档</el-radio-button>
+              <el-radio-button label="history">归档</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
           <el-form-item label="流程号">
             <el-input v-model="saveForm.flow_no" placeholder="请输入流程号" />
           </el-form-item>
@@ -376,9 +385,10 @@
           <el-table-column prop="remark" label="备注" />
           <el-table-column prop="record_count" label="记录数" width="80" />
           <el-table-column prop="updated_at" label="更新时间" width="160" />
-          <el-table-column label="操作" width="150">
+          <el-table-column label="操作" width="230">
             <template #default="scope">
               <el-button type="primary" size="small" @click="loadArchive(scope.row.id)">加载</el-button>
+              <el-button type="warning" size="small" @click="archiveToHistory(scope.row.id)">归档</el-button>
               <el-button type="danger" size="small" @click="deleteArchive(scope.row.id)">删除</el-button>
             </template>
           </el-table-column>
@@ -392,13 +402,39 @@
             style="margin-top: 15px; justify-content: center"
         />
       </el-dialog>
+      <el-dialog v-model="archiveHistoryVisible" title="读取归档" width="900px">
+        <div style="display: flex; gap: 10px; margin-bottom: 15px">
+          <el-input v-model="archiveHistorySearch" placeholder="搜索流程号或备注" clearable @keyup.enter="loadArchiveHistory" style="flex: 1" />
+          <el-button @click="loadArchiveHistory" type="primary">搜索</el-button>
+        </div>
+        <el-table :data="archiveHistoryList" border>
+          <el-table-column prop="flow_no" label="流程号" width="160" />
+          <el-table-column prop="remark" label="备注" />
+          <el-table-column prop="record_count" label="记录数" width="80" />
+          <el-table-column prop="updated_at" label="更新时间" width="160" />
+          <el-table-column label="操作" width="150">
+            <template #default="scope">
+              <el-button type="primary" size="small" @click="loadArchiveHistoryItem(scope.row.id)">加载</el-button>
+              <el-button type="danger" size="small" @click="deleteArchiveHistory(scope.row.id)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+            v-model:current-page="archiveHistoryPage"
+            :page-size="10"
+            :total="archiveHistoryTotal"
+            layout="total, prev, pager, next"
+            @current-change="loadArchiveHistory"
+            style="margin-top: 15px; justify-content: center"
+        />
+      </el-dialog>
     </div>
   </aside_navigation>
 
 </template>
 <script setup>
 import aside_navigation from '../component/navigation.vue'
-import {UploadFilled, Monitor, SetUp, OfficeBuilding, DocumentCopy, Download, Upload} from "@element-plus/icons-vue";
+import {UploadFilled, Monitor, SetUp, OfficeBuilding, DocumentCopy, Download, Upload, FolderOpened} from "@element-plus/icons-vue";
 import {ElMessage, ElMessageBox} from "element-plus";
 import axios from 'axios';
 import {computed, ref} from "vue";
@@ -434,7 +470,7 @@ let openPasteDialog = function () {
 
 // 存档相关
 let saveDialogVisible = ref(false)
-let saveForm = ref({ flow_no: '', remark: '' })
+let saveForm = ref({ flow_no: '', remark: '', save_type: 'history' })
 let saving = ref(false)
 
 let openSaveDialog = function () {
@@ -442,7 +478,7 @@ let openSaveDialog = function () {
     ElMessage.warning('无数据可保存')
     return
   }
-  saveForm.value = { flow_no: '', remark: '' }
+  saveForm.value = { flow_no: '', remark: '', save_type: 'history' }
   saveDialogVisible.value = true
 }
 
@@ -453,12 +489,17 @@ let saveArchive = async function () {
   }
   saving.value = true
   try {
-    await axios.post('/api/copilot/archive/save', {
+    // 根据保存类型选择接口：archive=存档，history=归档
+    const apiUrl = saveForm.value.save_type === 'history'
+      ? '/api/copilot/archive_history/save'
+      : '/api/copilot/archive/save'
+    const successMsg = saveForm.value.save_type === 'history' ? '归档成功' : '保存成功'
+    await axios.post(apiUrl, {
       flow_no: saveForm.value.flow_no,
       remark: saveForm.value.remark,
       archive_data: filterData.value
     })
-    ElMessage.success('保存成功')
+    ElMessage.success(successMsg)
     saveDialogVisible.value = false
   } catch (error) {
     ElMessage.error('保存失败：' + error.message)
@@ -509,6 +550,69 @@ let deleteArchive = async function (archiveId) {
     await axios.delete(`/api/copilot/archive/delete/${archiveId}`)
     ElMessage.success('删除成功')
     loadArchives()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败：' + error.message)
+    }
+  }
+}
+
+// ============ 归档相关 ============
+// 快捷归档：把存档直接归档（存档列表里的归档按钮调用）
+let archiveToHistory = async function (archiveId) {
+  try {
+    await ElMessageBox.confirm('确定将该存档归档？', '提示', { type: 'warning' })
+    await axios.post(`/api/copilot/archive/to_history/${archiveId}`)
+    ElMessage.success('归档成功')
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('归档失败：' + error.message)
+    }
+  }
+}
+
+// 读取归档列表弹窗
+let archiveHistoryVisible = ref(false)
+let archiveHistoryList = ref([])
+let archiveHistoryTotal = ref(0)
+let archiveHistoryPage = ref(1)
+let archiveHistorySearch = ref('')
+
+let loadArchiveHistory = async function () {
+  try {
+    const response = await axios.get('/api/copilot/archive_history/list', {
+      params: { page: archiveHistoryPage.value, page_size: 10, keyword: archiveHistorySearch.value }
+    })
+    if (response.data.code === 200) {
+      archiveHistoryList.value = response.data.data
+      archiveHistoryTotal.value = response.data.total
+      archiveHistoryVisible.value = true
+    }
+  } catch (error) {
+    ElMessage.error('查询失败：' + error.message)
+  }
+}
+
+let loadArchiveHistoryItem = async function (archiveId) {
+  try {
+    const response = await axios.get(`/api/copilot/archive_history/load/${archiveId}`)
+    if (response.data.code === 200) {
+      data.value = response.data.data
+      localStorage.setItem('copilotData', JSON.stringify(data.value))
+      ElMessage.success('加载成功')
+      archiveHistoryVisible.value = false
+    }
+  } catch (error) {
+    ElMessage.error('加载失败：' + error.message)
+  }
+}
+
+let deleteArchiveHistory = async function (archiveId) {
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示', { type: 'warning' })
+    await axios.delete(`/api/copilot/archive_history/delete/${archiveId}`)
+    ElMessage.success('删除成功')
+    loadArchiveHistory()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败：' + error.message)
