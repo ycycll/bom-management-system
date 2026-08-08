@@ -113,7 +113,8 @@ async def upload_file(file: UploadFile = File(...)):
             '钢布': '钢布',
             '橡套电缆(喇叭口)': '喇叭口',
             '标准': '',
-            '钢布式葛兰': '钢布不锈钢格兰'
+            '钢布式葛兰': '钢布不锈钢格兰',
+            '尼龙格兰': ''
         }
         df1['出线方式_1'] = df1['出线方式_1'].map(map_df1_gl).fillna(df1['出线方式'])
 
@@ -389,7 +390,8 @@ async def check(filterDF: List[Dict]):
                                 '钢布': '钢布',
                                 '橡套电缆(喇叭口)': '喇叭口',
                                 '标准': '',
-                                '钢布式葛兰': ''
+                                '钢布式葛兰': '',
+                                '尼龙格兰': ''
                                 }
             df1_check['leadWireMethod_del'] = df1_check['leadWireMethod_del'].map(map_df1_gl_check).fillna('')
             checkcleaner_df1 = CheckCleaner(df1_check)
@@ -477,6 +479,24 @@ async def check(filterDF: List[Dict]):
         if metal_fan_error_condition.any():
             df_check.loc[metal_fan_error_condition, 'bomFalse'] = df_check.loc[
                                                                       metal_fan_error_condition, 'bomFalse'] + ',金属风扇'
+        
+        # 新增检查：电压接法校核
+        # 前提：电压列为380或400（排除订单本身就规定异电压的情况）
+        volt_normal = df_check['volt'].isin(['380', '400'])
+        power_num = pd.to_numeric(df_check['power'], errors='coerce')
+        # 3kW及以下：描述出现660/690为错误（小功率应为Y接法，相电压220V，不该出现660/690）
+        low_power_error = (volt_normal &
+                        (power_num <= 3) &
+                        df_check['materialDesc'].str.contains(r'(?<!\d)(?:660|690)(?!\d)', na=False, regex=True))
+        if low_power_error.any():
+            df_check.loc[low_power_error, 'bomFalse'] = df_check.loc[low_power_error, 'bomFalse'] + ',电压接法'
+        # 3kW以上：描述出现220/230为错误（大功率应为Δ接法，线电压380V，不该出现220/230）
+        high_power_error = (volt_normal &
+                            (power_num > 3) &
+                            df_check['materialDesc'].str.contains(r'(?<!\d)(?:220|230)(?!\d)', na=False, regex=True))
+        if high_power_error.any():
+            df_check.loc[high_power_error, 'bomFalse'] = df_check.loc[high_power_error, 'bomFalse'] + ',电压接法'
+
 
         df_check = df_check.loc[:, ~df_check.columns.str.contains('_bom') & ~df_check.columns.str.contains('_del')]
 
