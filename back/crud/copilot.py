@@ -271,7 +271,13 @@ async def recommend(
             if str(order_const) != str(hub_const):
                 continue
             hub_tags = set(row['recommendTP'].split(','))
-            score = len(order_tags & hub_tags) / len(order_tags | hub_tags)
+            union_len = len(order_tags | hub_tags)
+            # 面漆多值修正：双方都有面漆但值不同时，并集（分母）-1
+            order_paint = next((t for t in order_tags if t.startswith('面漆:')), None)
+            hub_paint = next((t for t in hub_tags if t.startswith('面漆:')), None)
+            if order_paint and hub_paint and order_paint != hub_paint:
+                union_len -= 1
+            score = len(order_tags & hub_tags) / union_len
 
             for feature, penalty in triggered_features.items():
                 if feature not in row['recommendTP']:
