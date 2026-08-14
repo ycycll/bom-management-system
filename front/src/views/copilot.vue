@@ -188,6 +188,9 @@
             <el-button type="success" @click="exportMaintainTable" size="default">
               导出 Excel
             </el-button>
+            <el-button type="primary" @click="pushToApproveNy" :loading="pushingApprove" size="default">
+              推送到审批系统
+            </el-button>
           </div>
           <el-table v-bind:data="maintainResult" border>
             <el-table-column prop="出厂编码" label="出厂编码" />
@@ -1002,6 +1005,34 @@ let fillRecommend = function (recommendItem) {
   ElMessage.success('已填入');
   drawerVisible.value = false;
 };
+
+
+// ============ 推送到审批系统 ============
+let pushingApprove = ref(false)
+
+let pushToApproveNy = async function () {
+  if (maintainResult.value.length === 0) {
+    ElMessage.warning('无数据可推送')
+    return
+  }
+
+  pushingApprove.value = true
+  try {
+    // 直接把 maintainResult（中文字段）发给后端，后端做字段映射
+    let response = await axios.post('/api/copilot/approve-ny/update', maintainResult.value)
+
+    if (response.data.code === 200) {
+      ElMessage.success(`成功推送 ${maintainResult.value.length} 条铭牌数据`)
+    } else {
+      ElMessage.error(response.data.message || '推送失败')
+    }
+  } catch (error) {
+    ElMessage.error('推送失败：' + error.message)
+  } finally {
+    pushingApprove.value = false
+  }
+}
+
 
 </script>
 

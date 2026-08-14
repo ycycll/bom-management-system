@@ -13,6 +13,7 @@ from crud.tool_function import CheckCleaner, Cleaner
 from db.config import Session
 from db.dict import model_data_ffb, model_fb_dict
 from model import TPResponse, TPItem, ARCHIVE_SAVE_MODEL
+import httpx
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -701,6 +702,12 @@ async def maintain(filterDF: List[Dict]):
         df = df.sort_values(by='id')
         df = df.drop(columns=['技术准备', 'id'])
 
+        df = df[['出厂编码', '物料号', '接法', '中文描述', '型号', '额定功率', '额定电压',
+                 '频率', '防护等级', '绝缘等级', '冷却方式', '防腐等级', '防爆等级',
+                 '电流', '转速', '效率', '功率因数', '重量', '标准编码', '噪声',
+                 '驱动端轴承', '非驱动轴承', '铭牌料号', '打印模板', '备用列8',
+                 '环境温度', '海拔高度', '工作制', '服务系数SF', '备用13', '编码规则']]
+
         # 处理JSON序列化问题
         df = df.fillna('')
 
@@ -1016,3 +1023,81 @@ async def archive_to_history(archive_id: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"归档失败: {str(e)}")
+
+    
+    # 外部系统配置
+APPROVE_NY_API = "http://192.168.0.42:8680/ApproveNy/update"
+APPROVE_NY_TOKEN = "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIyMDI0MDQzMTkiLCJjcmVhdGVkIjoxNzg2NjczNjI2MzE5LCJleHAiOjE3ODY5MzI4MjZ9.vuH7yMeIcCRpjn6fR3CVHC0wzWbfpIPAaO2y_1t6zLQkQFMpGLWWqvr29cqd3zRjWk-hHTciDk1ffa6rqLVCrQ"  # 你的JWT Token
+
+# 中文字段 → API英文字段的映射表
+FIELD_MAPPING = {
+    "出厂编码": "serno",
+    "物料号": "materialno",
+    "接法": "conn",
+    "中文描述": "sp3",
+    "型号": "model",
+    "额定功率": "kw",
+    "额定电压": "v",
+    "频率": "hz",
+    "防护等级": "ip",
+    "绝缘等级": "ins",
+    "冷却方式": "ic",
+    "防腐等级": "cp",
+    "防爆等级": "ex",
+    "电流": "a",
+    "转速": "rmin",
+    "效率": "eff",
+    "功率因数": "cos",
+    "重量": "kg",
+    "标准编码": "std",
+    "噪声": "noise",
+    "驱动端轴承": "de",
+    "非驱动轴承": "nde",
+    "铭牌料号": "plateremark",
+    "打印模板": "pirntfilenm",
+    "备用列8": "cnex",
+    "环境温度": "at",
+    "海拔高度": "alt",
+    "工作制": "s",
+    "服务系数SF": "sf",
+    "备用13": "free1",
+    "编码规则": "free2",
+}
+
+@copilot.post("/approve-ny/update")
+async def approve_ny_update(items: List[Dict]):
+    """批量推送铭牌数据到审批系统"""
+    results = []
+    async with httpx.AsyncClient() as client:
+        for item in items:
+            # 中文字段映射成英文
+            payload = {"id": 0}
+            for cn_field, en_field in FIELD_MAPPING.items():
+                payload[en_field] = str(item.get(cn_field, "") or "")
+
+            # 补充没有对应列的字段，默认空
+            for extra in ["bearing", "cp", "plateremark",
+                          "free1", "free2", "free3", "free4", "free5"]:
+                payload[extra] = ""
+
+            try:
+                resp = await client.post(
+                    APPROVE_NY_API,
+                    json=payload,
+                    headers={
+                        "Authorization": APPROVE_NY_TOKEN,
+                        "Content-Type": "application/json;charset=UTF-8",
+                    },
+                    timeout=10.0,
+                )
+                resp.raise_for_status()
+                results.append({"serno": payload["serno"], "status": "ok"})
+            except Exception as e:
+                results.append({"serno": payload["serno"], "status": "fail", "error": str(e)})
+
+    fail_count = sum(1 for r in results if r["status"] == "fail")
+    return {
+        "code": 200 if fail_count == 0 else 207,
+        "message": f"成功{len(results) - fail_count}条，失败{fail_count}条",
+        "data": results
+    }
