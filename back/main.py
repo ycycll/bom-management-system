@@ -8,6 +8,7 @@ from crud.defog import defog
 from crud.agreement import agreement
 from crud.draw import draw
 from crud.component import component
+from plugin.plugin_copilot import plugin_copilot
 
 app = FastAPI()
 
@@ -27,6 +28,7 @@ app.include_router(defog)
 app.include_router(agreement)
 app.include_router(draw)
 app.include_router(component)
+app.include_router(plugin_copilot)
 
 if __name__ == "__main__":
     import uvicorn
