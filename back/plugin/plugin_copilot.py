@@ -14,8 +14,8 @@ from db.config import Session
 from db.dict import model_data_ffb, model_fb_dict
 from model import TPResponse, TPItem, ARCHIVE_SAVE_MODEL
 
-
 plugin_copilot = APIRouter(prefix="/plugin_copilot", tags=["插件辅助"])
+
 
 @plugin_copilot.post("/tp", tags=["技术准备"])
 async def tp(data: List[Dict]):
@@ -25,10 +25,10 @@ async def tp(data: List[Dict]):
 
     # 列筛选
     df = df[['工作令号', '物料号码', '物料长文本描述', '行项目备注',
-                '产品型号', '功率', '电压',
-                '频率', '安装方式', '绝缘等级', '防护等级', '出线方式', '环境条件', '冷却方式',
-                '防爆等级', '环境温度', '主接线盒位置及方向', '旋转方向', '轴承品牌', '海拔高度', '加热器',
-                '定子测温', '轴承测温']]
+             '产品型号', '功率', '电压',
+             '频率', '安装方式', '绝缘等级', '防护等级', '出线方式', '环境条件', '冷却方式',
+             '防爆等级', '环境温度', '主接线盒位置及方向', '旋转方向', '轴承品牌', '海拔高度', '加热器',
+             '定子测温', '轴承测温']]
 
     # 去空白
     for i in df.columns:
@@ -107,7 +107,7 @@ async def tp(data: List[Dict]):
         '标准': '',
         '钢布式葛兰': '钢布不锈钢格兰',
         '尼龙格兰': '',
-        '标配':''
+        '标配': ''
     }
     df1['出线方式_1'] = df1['出线方式_1'].map(map_df1_gl).fillna(df1['出线方式'])
 
@@ -176,7 +176,7 @@ async def tp(data: List[Dict]):
             bearingTempSensor=row.get('轴承测温', '')
         )
         items.append(item)
-    
+
     return {"code": 200, "message": "处理成功", "data": items, "total": len(items)}
 
 
@@ -186,7 +186,13 @@ async def check(filterDF: List[Dict]):
         df_check = pd.DataFrame(filterDF, dtype=str)
         df_check['id'] = range(1, len(df_check) + 1)  # del col
         df_check['materialDesc'] = df_check['materialDesc'].str.replace('5-50', '5~50')
+        df_check['freq'] = df_check['freq'].str.replace('5-50', '5~50')
         df_check.insert(loc=0, column='bomFalse', value='')
+
+        df_check['insulationClass'] = df_check['insulationClass'].str.replace('155（F)', '155(F)')
+        df_check['insulationClass'] = df_check['insulationClass'].str.replace('180（H)', '180(H)')
+        df_check['insulationClass'] = df_check['insulationClass'].replace('F', '155(F)')
+
         map_position_check = {
             '顶部右出线': '顶右',
             '顶部左出线': '顶左',
@@ -211,7 +217,6 @@ async def check(filterDF: List[Dict]):
         df_check['insulationClass_del'] = df_check['insulationClass'].fillna('155(F)')
         df_check['insulationClass_del'] = df_check['insulationClass_del'].map(map_jydj)
         df_check['insulationClass_del'] = df_check['insulationClass_del'].str.replace('F级', '')
-
 
         checkcleaner = CheckCleaner(df_check)
         checkcleaner.check_and_clean('volt', '380')
@@ -257,7 +262,6 @@ async def check(filterDF: List[Dict]):
             checkcleaner_df1.review(col='environmentalConditions', col_standard_config='户内',
                                     col_non_standard_configs=['^.*?-.*?-\d[a-zA-Z]'])
 
-
         if not df2_check.empty:
             df2_check['leadWireMethod_del'] = df2_check['leadWireMethod'].fillna('橡套')
             map_df2_gl_check = {
@@ -291,12 +295,6 @@ async def check(filterDF: List[Dict]):
                 map_ep_2_check).fillna('')
             checkcleaner_df2.check_in_description('environmentalConditions')
 
-            fb_color_review_false = (~df2_check['techPreparation'].str.contains('面漆:', na=False)) & (
-                ~df2_check['materialDesc'].str.contains('RAL5012', na=False))
-            if fb_color_review_false.any():
-                df2_check.loc[fb_color_review_false, 'bomFalse'] = df2_check.loc[
-                                                                       fb_color_review_false, 'bomFalse'] + ',面漆'
-
         df_check = pd.concat([df1_check, df2_check], join='outer', ignore_index=True)
         df_check['bomFalse'] = df_check['bomFalse'] + df_check['leadWireMethod_bom'] + df_check[
             'environmentalConditions_bom']
@@ -322,15 +320,15 @@ async def check(filterDF: List[Dict]):
         oil_error_condition = oil_model_condition & oil_condition
         if oil_error_condition.any():
             df_check.loc[oil_error_condition, 'bomFalse'] = df_check.loc[oil_error_condition, 'bomFalse'] + ',注油'
-        
+
         # 新增检查：电压接法校核
         # 前提：电压列为380或400（排除订单本身就规定异电压的情况）
         volt_normal = df_check['volt'].isin(['380', '400'])
         power_num = pd.to_numeric(df_check['power'], errors='coerce')
         # 3kW及以下：描述出现660/690为错误（小功率应为Y接法，相电压220V，不该出现660/690）
         low_power_error = (volt_normal &
-                        (power_num <= 3) &
-                        df_check['materialDesc'].str.contains(r'(?<!\d)(?:660|690)(?!\d)', na=False, regex=True))
+                           (power_num <= 3) &
+                           df_check['materialDesc'].str.contains(r'(?<!\d)(?:660|690)(?!\d)', na=False, regex=True))
         if low_power_error.any():
             df_check.loc[low_power_error, 'bomFalse'] = df_check.loc[low_power_error, 'bomFalse'] + ',电压接法'
         # 3kW以上：描述出现220/230为错误（大功率应为Δ接法，线电压380V，不该出现220/230）
@@ -339,7 +337,6 @@ async def check(filterDF: List[Dict]):
                             df_check['materialDesc'].str.contains(r'(?<!\d)(?:220|230)(?!\d)', na=False, regex=True))
         if high_power_error.any():
             df_check.loc[high_power_error, 'bomFalse'] = df_check.loc[high_power_error, 'bomFalse'] + ',电压接法'
-
 
         df_check = df_check.loc[:, ~df_check.columns.str.contains('_bom') & ~df_check.columns.str.contains('_del')]
 
