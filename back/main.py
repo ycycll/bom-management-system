@@ -9,6 +9,7 @@ from crud.agreement import agreement
 from crud.draw import draw
 from crud.component import component
 from plugin.plugin_copilot import plugin_copilot
+from crud.archive_query import archive_query
 
 app = FastAPI()
 
@@ -29,6 +30,7 @@ app.include_router(agreement)
 app.include_router(draw)
 app.include_router(component)
 app.include_router(plugin_copilot)
+app.include_router(archive_query)
 
 if __name__ == "__main__":
     import uvicorn

@@ -49,6 +49,10 @@
             <el-icon><Box /></el-icon>
             <span>部件推荐</span>
           </el-menu-item>
+          <el-menu-item index="/archive-query">
+            <el-icon><ChromeFilled /></el-icon>
+            <span>归档查询</span>
+          </el-menu-item>
         </el-sub-menu>
       </el-menu>
       <div class="logout-btn">
@@ -66,7 +70,7 @@
 <script setup>
 import {useRouter} from "vue-router";
 import {ElMessage} from "element-plus";
-import {User, HomeFilled, Grid, ChatLineSquare, Sunny, Setting, Odometer, Box, Document, FolderOpened} from "@element-plus/icons-vue";
+import {User, HomeFilled, Grid, ChatLineSquare, Sunny, Setting, Odometer, Box, Document, FolderOpened, ChromeFilled} from "@element-plus/icons-vue";
 import { onMounted } from "vue";
 
 const router = useRouter();

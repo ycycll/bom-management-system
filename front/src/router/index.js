@@ -8,6 +8,7 @@ import defog from '../views/defog.vue'
 import agreement from '../views/agreement.vue'
 import draw from '../views/draw.vue'
 import component from '../views/component.vue'
+import archiveQuery from '../views/archiveQuery.vue'
 
 const routes = [
     {
@@ -54,6 +55,11 @@ const routes = [
         path: '/component',
         name: 'component',
         component: component
+    },
+    { 
+        path: '/archive-query',
+        name: 'archiveQuery', 
+        component: archiveQuery 
     },
 ]
 
