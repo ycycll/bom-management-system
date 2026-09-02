@@ -54,6 +54,10 @@
             <span>归档查询</span>
           </el-menu-item>
         </el-sub-menu>
+        <el-menu-item index="/tool">
+          <el-icon><Tools /></el-icon>
+          <span>工具</span>
+        </el-menu-item>
       </el-menu>
       <div class="logout-btn">
         <el-button type="danger" @click="handleLogout" plain>退出登录</el-button>
@@ -70,7 +74,8 @@
 <script setup>
 import {useRouter} from "vue-router";
 import {ElMessage} from "element-plus";
-import {User, HomeFilled, Grid, ChatLineSquare, Sunny, Setting, Odometer, Box, Document, FolderOpened, ChromeFilled} from "@element-plus/icons-vue";
+import {User, HomeFilled, Grid, ChatLineSquare, Sunny, Setting, Odometer, Box, Document, FolderOpened, ChromeFilled, Tools} from "@element-plus/icons-vue";
+
 import { onMounted } from "vue";
 
 const router = useRouter();

@@ -9,6 +9,8 @@ import agreement from '../views/agreement.vue'
 import draw from '../views/draw.vue'
 import component from '../views/component.vue'
 import archiveQuery from '../views/archiveQuery.vue'
+import tool from '../views/tool.vue'
+import toolDetail from '../views/tool_detail.vue'
 
 const routes = [
     {
@@ -60,6 +62,16 @@ const routes = [
         path: '/archive-query',
         name: 'archiveQuery', 
         component: archiveQuery 
+    },
+    {
+        path: '/tool',
+        name: 'tool',
+        component: tool
+    },
+    { 
+        path: '/tool/:toolId',
+        name: 'toolDetail', 
+        component: toolDetail 
     },
 ]
 
