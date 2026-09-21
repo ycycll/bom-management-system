@@ -348,6 +348,7 @@ async def check(filterDF: List[Dict]):
             '': '顶右'
         }
         df_check['junctionBoxPosition_del'] = df_check['junctionBoxPosition'].fillna('顶部右出线')
+        df_check['junctionBoxPosition_del'] = df_check['junctionBoxPosition_del'].str.replace('顶右', '')
         df_check['junctionBoxPosition_del'] = df_check['junctionBoxPosition_del'].map(map_position_check)
         df_check['junctionBoxPosition_del'] = df_check['junctionBoxPosition_del'].str.replace('顶右', '')
         map_jydj = {
