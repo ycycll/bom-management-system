@@ -54,6 +54,55 @@
           </div>
         </div>
 
+        <!-- ========== 轴承库 ========== -->
+        <div v-else-if="toolId === 'bearing'" class="glass-panel bearing-panel">
+          <h3 style="margin:0 0 14px 0">⚙️ 轴承库查询</h3>
+
+          <div class="bearing-filters">
+            <el-input v-model="bearingKeyword" placeholder="搜索型号(如6205)或机座号" clearable style="width: 200px" @keyup.enter="bearingPage = 1" />
+            <el-select v-model="bearingSeries" placeholder="全部系列" clearable style="width: 140px" @change="bearingPage = 1">
+              <el-option v-for="s in bearingSeriesList" :key="s" :label="s" :value="s" />
+            </el-select>
+            <el-input-number v-model="bearingDMin" :min="0" :controls="false" placeholder="内径≥" style="width:100px" />
+            <span style="color:#909399">~</span>
+            <el-input-number v-model="bearingDMax" :min="0" :controls="false" placeholder="内径≤" style="width:100px" />
+            <el-button type="primary" @click="bearingPage = 1">查询</el-button>
+            <el-button @click="resetBearingFilter">重置</el-button>
+            <el-tag type="info" effect="plain">共 {{ filteredBearings.length }} 条</el-tag>
+          </div>
+
+          <el-table :data="pagedBearings" border stripe size="small" style="margin-top:14px" height="calc(100vh - 340px)">
+            <el-table-column prop="model" label="型号" width="90" fixed />
+            <el-table-column prop="series" label="系列" width="80" />
+            <el-table-column prop="bearing_type" label="类型" width="130" />
+            <el-table-column prop="d" label="内径 d(mm)" width="100" align="right" />
+            <el-table-column prop="D" label="外径 D(mm)" width="100" align="right" />
+            <el-table-column prop="B" label="宽度 B(mm)" width="100" align="right" />
+            <el-table-column prop="dynamic_load" label="动载(N)" width="110" align="right">
+              <template #default="{row}">{{ row.dynamic_load ? row.dynamic_load.toLocaleString() : '' }}</template>
+            </el-table-column>
+            <el-table-column prop="static_load" label="静载(N)" width="110" align="right">
+              <template #default="{row}">{{ row.static_load ? row.static_load.toLocaleString() : '' }}</template>
+            </el-table-column>
+            <el-table-column prop="limit_speed" label="极限转速(r/min)" width="130" align="right" />
+            <el-table-column prop="weight" label="重量(kg)" width="90" align="right">
+              <template #default="{row}">{{ row.weight ? row.weight.toFixed(3) : '' }}</template>
+            </el-table-column>
+            <el-table-column prop="frame_no" label="对应机座号" width="130" />
+            <el-table-column prop="position" label="安装位置" width="100" />
+            <el-table-column prop="note" label="备注" min-width="160" />
+          </el-table>
+
+          <el-pagination
+            style="margin-top: 12px; justify-content: flex-end"
+            background
+            layout="total, prev, pager, next"
+            :total="filteredBearings.length"
+            v-model:current-page="bearingPage"
+            v-model:page-size="bearingPageSize"
+          />
+        </div>
+
         <!-- 未知工具兜底 -->
         <el-empty v-else description="没有这个工具，返回工具浮窗" />
       </div>
@@ -66,13 +115,14 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import aside_navigation from '../component/navigation.vue';
+import { bearingData, bearingSeriesList } from './data/bearing-data.js';
 
 const route = useRoute();
 const router = useRouter();
 
 const toolId = route.params.toolId;
 
-const toolNames = { calculator: '计算器', notepad: '记事本' };
+const toolNames = { calculator: '计算器', notepad: '记事本', bearing: '轴承库' };
 const toolName = computed(() => toolNames[toolId] || '未知工具');
 
 /* ---------- 计算器 ---------- */
@@ -153,6 +203,43 @@ const clearNote = () => {
 onMounted(() => {
   noteContent.value = localStorage.getItem('toolNote') || '';
 });
+
+/* ---------- 轴承库 ---------- */
+const bearingKeyword = ref('');
+const bearingSeries = ref('');
+const bearingDMin = ref(null);
+const bearingDMax = ref(null);
+const bearingPage = ref(1);
+const bearingPageSize = ref(20);
+
+const filteredBearings = computed(() => {
+  return bearingData.filter(b => {
+    if (bearingKeyword.value) {
+      const kw = bearingKeyword.value.toLowerCase();
+      const hit = b.model.toLowerCase().includes(kw)
+        || (b.frame_no && b.frame_no.toLowerCase().includes(kw))
+        || (b.note && b.note.toLowerCase().includes(kw));
+      if (!hit) return false;
+    }
+    if (bearingSeries.value && b.series !== bearingSeries.value) return false;
+    if (bearingDMin.value !== null && b.d < bearingDMin.value) return false;
+    if (bearingDMax.value !== null && b.d > bearingDMax.value) return false;
+    return true;
+  });
+});
+
+const pagedBearings = computed(() => {
+  const start = (bearingPage.value - 1) * bearingPageSize.value;
+  return filteredBearings.value.slice(start, start + bearingPageSize.value);
+});
+
+const resetBearingFilter = () => {
+  bearingKeyword.value = '';
+  bearingSeries.value = '';
+  bearingDMin.value = null;
+  bearingDMax.value = null;
+  bearingPage.value = 1;
+};
 </script>
 
 <style scoped>
@@ -228,5 +315,14 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+/* 轴承库 */
+.bearing-panel { max-width: none; width: 100%; }
+.bearing-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 </style>

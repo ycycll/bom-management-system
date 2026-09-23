@@ -37,7 +37,8 @@ const router = useRouter();
 
 const tools = ref([
   { id: 'calculator', icon: '🧮', name: '计算器', desc: '加减乘除、百分比' },
-  { id: 'notepad', icon: '📝', name: '记事本', desc: '随手记，自动保存本地' }
+  { id: 'notepad', icon: '📝', name: '记事本', desc: '随手记，自动保存本地' },
+  { id: 'bearing', icon: '⚙️', name: '轴承库', desc: '查询轴承型号、尺寸、载荷' }
 ]);
 
 const MAX = 14; // 最大倾斜角度
